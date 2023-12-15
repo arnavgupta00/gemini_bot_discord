@@ -91,4 +91,4 @@ client.on('messageCreate', async (msg) => {
 
 
 
-client.login('MTE4NDkyNDMxODgwMzY5Nzc3NQ.Ga29X_.R9SwOg97EukmJTNCb1a1NPxRbwYPhr5JThCIzc');
+client.login(process.env.BOT_TOKEN);
