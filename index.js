@@ -1,9 +1,10 @@
 import Discord from 'discord.js';
-import 'dotenv/config';
+import "dotenv/config"
 import express from 'express';
 import bodyParser from 'body-parser';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Client, GatewayIntentBits } from 'discord.js';
+import WebSocket from 'ws';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,6 +12,25 @@ const PORT = process.env.PORT || 3000;
 app.use(bodyParser.json());
 
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
+
+const wss = new WebSocket.Server({ noServer: true });
+
+wss.on('connection', (socket) => {
+  console.log('WebSocket connected');
+
+  // You can handle WebSocket messages here and broadcast updates to connected clients
+});
+
+const server = app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+
+// Handle WebSocket upgrade requests
+server.on('upgrade', (request, socket, head) => {
+  wss.handleUpgrade(request, socket, head, (socket) => {
+    wss.emit('connection', socket, request);
+  });
+});
 
 async function discordE(prompt) {
   return new Promise(async (resolve, reject) => {
@@ -51,15 +71,19 @@ app.get('/generateText/:promptText', async (req, res) => {
   try {
     const promptText = req.params.promptText;
     const response = await discordE(promptText);
+
+    // Broadcast the response to all connected WebSocket clients
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify(response));
+      }
+    });
+
     res.json(response);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
-});
-
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
 });
 
 const client = new Client({
@@ -81,19 +105,27 @@ client.on('messageCreate', async (msg) => {
       msg.reply('Request Received');
       const response = await discordE(promptText);
 
-      // Split the text into chunks of 2000 characters or less
-      const chunks = response.text.match(/.{1,2000}/gs) || [];
+      if (response && response.text) {
+        // If response is not empty, send it to the user
+        msg.reply(response.text);
 
-      // Send each chunk as a separate message
-      for (const chunk of chunks) {
-        msg.reply(chunk);
+        // Broadcast the response to all connected WebSocket clients
+        wss.clients.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(response));
+            
+          }
+        });
+      } else {
+        // Handle the case where the response is empty
+        msg.reply('The generated text is empty.');
       }
     } catch (error) {
       console.error(error);
-
       msg.reply('Error generating text. Please try again.');
     }
   }
 });
+
 
 client.login(process.env.BOT_TOKEN);
