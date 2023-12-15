@@ -38,7 +38,15 @@ async function discordE(prompt) {
     }
   });
 }
-
+app.get('/', (req, res) => {
+  try {
+    
+    res.redirect("/generateText/hello")
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 app.get('/generateText/:promptText', async (req, res) => {
   try {
     const promptText = req.params.promptText;
