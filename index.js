@@ -1,5 +1,5 @@
 import Discord from 'discord.js';
-import "dotenv/config";
+import 'dotenv/config';
 import express from 'express';
 import bodyParser from 'body-parser';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -9,7 +9,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
-
 
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 
@@ -38,15 +37,16 @@ async function discordE(prompt) {
     }
   });
 }
+
 app.get('/', (req, res) => {
   try {
-    
-    res.redirect("/generateText/hello")
+    res.redirect('/generateText/hello');
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
 app.get('/generateText/:promptText', async (req, res) => {
   try {
     const promptText = req.params.promptText;
@@ -78,25 +78,22 @@ client.on('messageCreate', async (msg) => {
   if (msg.content.startsWith('!generateText')) {
     const promptText = msg.content.slice('!generateText'.length).trim();
     try {
-      msg.reply("Request Recieved");
+      msg.reply('Request Received');
       const response = await discordE(promptText);
-      
+
       // Split the text into chunks of 2000 characters or less
       const chunks = response.text.match(/.{1,2000}/gs) || [];
-      
+
       // Send each chunk as a separate message
       for (const chunk of chunks) {
         msg.reply(chunk);
       }
     } catch (error) {
       console.error(error);
-      
+
       msg.reply('Error generating text. Please try again.');
     }
   }
-  
 });
-
-
 
 client.login(process.env.BOT_TOKEN);
